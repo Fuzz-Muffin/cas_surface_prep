@@ -441,8 +441,11 @@ def find_oh_sites(coords, top_surf, bot_surf, names, nn_list, rings, box, open_r
         two_rings = 0
         three_rings = 0
         to_save = np.full(coords.shape[0], 0)
-        for mems,size in zip(ring_mem_list, ring_size_list):
-            # we want to only break a link oxygen between Si,Al with a coord of 2
+
+        deleted_o = []
+        for ii, mems in enumerate(ring_mem_list):
+            # we want to only break a link ooxygen between Si,Al with a coord of 2
+            size = len(mems)
             mem_pos = coords[mems]
             mem_name = names[mems]
             network_z = z[mems]
@@ -470,18 +473,28 @@ def find_oh_sites(coords, top_surf, bot_surf, names, nn_list, rings, box, open_r
             else:
                 isbot = False
 
-            # first check if there is a two-fold coord O
+            # check if any of the oxygens have been already deleted
+            # if yes, then we don't want to touch this ring
+            already_deleted = [True if el in deleted_o else False for el in mems]
+            if np.any(already_deleted):
+                istop = False
+                isbot = False
+
             if (istop) or (isbot):
                 mems_arr = np.array(mems)
+
+
+                # second, check if there is a two-fold coord O
                 if o_mask_network.sum() == 1:
                     o_id = int(mems_arr[o_mask_network])
                     remove_o.append(o_id)
+                    deleted_o.append(o_id)
                     add_oh_to_x.extend(network_nn[o_id])
                     if size == 4:
                         two_rings += 1
                         to_save[mems] = 2
                     elif size == 6:
-                        three_rings +=1
+                        three_rings += 1
                         to_save[mems] = 3
 
                 elif o_mask_network.sum() > 1:
@@ -490,6 +503,7 @@ def find_oh_sites(coords, top_surf, bot_surf, names, nn_list, rings, box, open_r
                         ind = real_neighs.index(2)
                         o_id = int(mems_arr[o_mask_network][ind])
                         remove_o.append(o_id)
+                        deleted_o.append(o_id)
                         add_oh_to_x.extend(network_nn[o_id])
                         if size == 4:
                             two_rings += 1
@@ -506,6 +520,7 @@ def find_oh_sites(coords, top_surf, bot_surf, names, nn_list, rings, box, open_r
 
                         o_id = int(mems_arr[o_mask_network][o_surf_ind])
                         remove_o.append(o_id)
+                        deleted_o.append(o_id)
                         add_oh_to_x.extend(network_nn[o_id])
                         if size == 4:
                             two_rings += 1
